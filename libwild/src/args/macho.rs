@@ -227,6 +227,20 @@ fn setup_argument_parser() -> ArgumentParser<MachOArgs> {
         );
     parser
         .declare_with_param()
+        .long("macosx_version_min")
+        .help("Set deployment target (legacy synonym for -platform_version macos <v> <v>)")
+        .execute(|args, _modifier_stack, value| {
+            let version =
+                SemanticVersion::try_from(value).context("cannot parse macosx_version_min")?;
+            args.platform_version = Some(PlatformVersion {
+                platform: "macos".to_owned(),
+                minimum_version: version.clone(),
+                sdk_version: version,
+            });
+            Ok(())
+        });
+    parser
+        .declare_with_param()
         .long("syslibroot")
         .help("Set system root")
         .execute(|args, _modifier_stack, value| {
