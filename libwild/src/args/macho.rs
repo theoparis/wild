@@ -26,6 +26,7 @@ pub struct MachOArgs {
     pub(crate) lib_search_path: Vec<Box<Path>>,
     pub(crate) plugin_path: Option<String>,
     pub(crate) dead_strip_dylibs: bool,
+    pub(crate) dead_strip: bool,
     pub(crate) entry: String,
 }
 
@@ -87,6 +88,7 @@ impl Default for MachOArgs {
             lib_search_path: Vec::new(),
             plugin_path: None,
             dead_strip_dylibs: false,
+            dead_strip: false,
             entry: "_main".to_owned(),
         }
     }
@@ -133,8 +135,7 @@ impl platform::Args for MachOArgs {
     }
 
     fn should_gc_sections(&self) -> bool {
-        // TODO: Mach-O needs proper support for GC and -dead_strip.
-        false
+        self.dead_strip
     }
 
     fn should_export_all_dynamic_symbols(&self) -> bool {
@@ -312,6 +313,13 @@ fn setup_argument_parser() -> ArgumentParser<MachOArgs> {
         .long("dead_strip_dylibs")
         .execute(|args, _modifier_stack| {
             args.dead_strip_dylibs = true;
+            Ok(())
+        });
+    parser
+        .declare()
+        .long("dead_strip")
+        .execute(|args, _modifier_stack| {
+            args.dead_strip = true;
             Ok(())
         });
 
