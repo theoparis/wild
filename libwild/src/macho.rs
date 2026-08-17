@@ -625,7 +625,10 @@ impl platform::SectionHeader for SectionHeader {
     }
 
     fn is_group(&self) -> bool {
-        todo!()
+        // Mach-O has no SHT_GROUP-style section-group concept; duplicate
+        // definitions across TUs (COMDAT-equivalent) are handled at the
+        // symbol level via weak/coalesced symbols instead.
+        false
     }
 
     fn is_note(&self) -> bool {
