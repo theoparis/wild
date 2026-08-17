@@ -27,6 +27,11 @@ pub struct MachOArgs {
     pub(crate) plugin_path: Option<String>,
     pub(crate) dead_strip_dylibs: bool,
     pub(crate) dead_strip: bool,
+    // Prefix ld64 strips from N_OSO stab paths when generating a debug map
+    // (so dsymutil/atos can locate the original .o files). Stored for when
+    // wild's Mach-O backend emits stabs; until then this has no effect,
+    // same as real ld64 when there's nothing for it to relativize.
+    pub(crate) oso_prefix: Option<String>,
     pub(crate) entry: String,
 }
 
@@ -89,6 +94,7 @@ impl Default for MachOArgs {
             plugin_path: None,
             dead_strip_dylibs: false,
             dead_strip: false,
+            oso_prefix: None,
             entry: "_main".to_owned(),
         }
     }
@@ -244,6 +250,14 @@ fn setup_argument_parser() -> ArgumentParser<MachOArgs> {
         .help("Load plugin")
         .execute(|args, _modifier_stack, value| {
             args.plugin_path = Some(value.to_owned());
+            Ok(())
+        });
+    parser
+        .declare_with_param()
+        .long("oso_prefix")
+        .help("Set prefix to strip from N_OSO stab paths in the debug map")
+        .execute(|args, _modifier_stack, value| {
+            args.oso_prefix = Some(value.to_owned());
             Ok(())
         });
     parser
