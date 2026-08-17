@@ -26,6 +26,12 @@ pub struct MachOArgs {
     pub(crate) lib_search_path: Vec<Box<Path>>,
     pub(crate) plugin_path: Option<String>,
     pub(crate) dead_strip_dylibs: bool,
+    pub(crate) dead_strip: bool,
+    // Prefix ld64 strips from N_OSO stab paths when generating a debug map
+    // (so dsymutil/atos can locate the original .o files). Stored for when
+    // wild's Mach-O backend emits stabs; until then this has no effect,
+    // same as real ld64 when there's nothing for it to relativize.
+    pub(crate) oso_prefix: Option<String>,
     pub(crate) entry: String,
 }
 
@@ -87,6 +93,8 @@ impl Default for MachOArgs {
             lib_search_path: Vec::new(),
             plugin_path: None,
             dead_strip_dylibs: false,
+            dead_strip: false,
+            oso_prefix: None,
             entry: "_main".to_owned(),
         }
     }
@@ -133,8 +141,7 @@ impl platform::Args for MachOArgs {
     }
 
     fn should_gc_sections(&self) -> bool {
-        // TODO: Mach-O needs proper support for GC and -dead_strip.
-        false
+        self.dead_strip
     }
 
     fn should_export_all_dynamic_symbols(&self) -> bool {
@@ -227,6 +234,20 @@ fn setup_argument_parser() -> ArgumentParser<MachOArgs> {
         );
     parser
         .declare_with_param()
+        .long("macosx_version_min")
+        .help("Set deployment target (legacy synonym for -platform_version macos <v> <v>)")
+        .execute(|args, _modifier_stack, value| {
+            let version =
+                SemanticVersion::try_from(value).context("cannot parse macosx_version_min")?;
+            args.platform_version = Some(PlatformVersion {
+                platform: "macos".to_owned(),
+                minimum_version: version.clone(),
+                sdk_version: version,
+            });
+            Ok(())
+        });
+    parser
+        .declare_with_param()
         .long("syslibroot")
         .help("Set system root")
         .execute(|args, _modifier_stack, value| {
@@ -243,6 +264,14 @@ fn setup_argument_parser() -> ArgumentParser<MachOArgs> {
         .help("Load plugin")
         .execute(|args, _modifier_stack, value| {
             args.plugin_path = Some(value.to_owned());
+            Ok(())
+        });
+    parser
+        .declare_with_param()
+        .long("oso_prefix")
+        .help("Set prefix to strip from N_OSO stab paths in the debug map")
+        .execute(|args, _modifier_stack, value| {
+            args.oso_prefix = Some(value.to_owned());
             Ok(())
         });
     parser
@@ -312,6 +341,13 @@ fn setup_argument_parser() -> ArgumentParser<MachOArgs> {
         .long("dead_strip_dylibs")
         .execute(|args, _modifier_stack| {
             args.dead_strip_dylibs = true;
+            Ok(())
+        });
+    parser
+        .declare()
+        .long("dead_strip")
+        .execute(|args, _modifier_stack| {
+            args.dead_strip = true;
             Ok(())
         });
 

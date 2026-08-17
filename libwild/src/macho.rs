@@ -1107,7 +1107,10 @@ impl platform::Platform for MachO {
     fn is_zero_sized_section_content(
         _section_id: crate::output_section_id::OutputSectionId,
     ) -> bool {
-        todo!()
+        // Mirrors elf.rs's default: no Mach-O built-in section currently
+        // needs the "drop entirely when empty" treatment ELF reserves for
+        // sframe sections, so every section counts as content even at size 0.
+        true
     }
 
     fn built_in_section_details() -> &'static [Self::BuiltInSectionDetails] {
